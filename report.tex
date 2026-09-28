@@ -1,0 +1,156 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{natbib}
+\usepackage{float}
+
+\title{Force Response of Homomeric Polypeptides via Steered Molecular Dynamics}
+\author{}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+%% ============================================================
+\section{Introduction}
+%% ============================================================
+
+In the present work, we investigate the force--extension relation of all 20 natural amino acids in the form of homomeric polypeptides, each consisting of 10 residues, by means of steered molecular dynamics (SMD) simulations in explicit water. This extends the scope of prior studies, which have typically focused on a limited subset of five amino acids (glycine, alanine, asparagine, glutamic acid, and lysine) with 13-residue chains. By including the complete amino acid alphabet, we aim to systematically map how side-chain chemistry---spanning nonpolar, polar uncharged, positively charged, and negatively charged residues---influences the mechanical response of polypeptide chains.
+
+In the SMD approach, one end of the polypeptide is held fixed while the other is pulled at constant velocity by a harmonic spring, generating non-equilibrium work trajectories. The potential of mean force (PMF), which represents the equilibrium free-energy profile along the pulling coordinate, is then reconstructed from multiple independent pulling trajectories using Jarzynski's equality:
+\begin{equation}
+    e^{-\Delta F / k_B T} = \left\langle e^{-W / k_B T} \right\rangle,
+    \label{eq:jarzynski}
+\end{equation}
+where $W$ is the non-equilibrium work performed during pulling, $\Delta F$ is the free-energy difference, and the average is taken over an ensemble of trajectories. In addition to the exponential average, we employ first- and second-order cumulant expansions for improved convergence.
+
+Key quantities extracted from the simulations include the force--extension curves, the PMF along the pulling coordinate, the peak rupture force, the dissipated work (a measure of irreversibility), and an effective Kuhn length characterizing the statistical segment size of the chain. The Kuhn length, defined as $a_\mathrm{Kuhn} = \langle z^2 \rangle_0 / (N \cdot a_0)$ or equivalently from the slope of the linear force--extension regime, provides a direct link between atomistic simulations and coarse-grained polymer models. By comparing these metrics across all 20 amino acid types, we establish a comprehensive picture of how side-chain properties modulate the mechanical behavior of polypeptide chains.
+
+%% ============================================================
+\section{Methodology}
+%% ============================================================
+
+\subsection{System Preparation}
+
+The following protocol was used to prepare each of the 20 homomeric deca-peptide systems:
+
+\begin{enumerate}
+    \item For each of the deca-amino acid residues, a probable structure was obtained using AlphaFold server. We also verified the structures with RoseTTAFold and found good agreement in the confidence scores.
+    
+    \item Each molecular structure was oriented such that its principal (long) axis was aligned along the $z$-axis and translated so that the first N atom of the first residue was placed at the origin using VMD and Tcl scripts.
+    
+    \item The systems were solvated using CHARMM-GUI. A water box of dimensions $40 \times 40 \times 80$~\AA\ was used, and charge neutralization was performed using KCl ions.
+\end{enumerate}
+
+\subsection{Force Field and Simulation Parameters}
+
+All molecular dynamics simulations were performed using the NAMD simulation package with the CHARMM36m force field for protein interactions and the TIP3P model for water molecules. The simulation parameters were chosen as follows:
+
+\begin{itemize}
+    \item \textbf{Time step:} $\Delta t = 2$~fs with rigid bonds for all hydrogen-containing bonds.
+    \item \textbf{Temperature:} $T = 300$~K, maintained by Langevin dynamics with a damping coefficient of $\gamma = 1$~ps$^{-1}$. Hydrogen atoms were excluded from the Langevin thermostat coupling.
+    \item \textbf{Non-bonded interactions:} A cutoff of 12~\AA\ was used with a switching function starting at 10~\AA\ and a pair list distance of 13.5~\AA.
+    \item \textbf{Long-range electrostatics:} Particle Mesh Ewald (PME) method with interpolation order 6 and a maximum grid spacing of 1.0~\AA.
+    \item \textbf{Periodic boundary conditions:} Applied in all three dimensions with water wrapping enabled.
+    \item \textbf{Trajectory output:} Coordinates saved every 500 steps (1~ps), energies every 100 steps.
+\end{itemize}
+
+\subsection{Equilibration}
+
+Prior to production SMD runs, each system was equilibrated using NAMD's standard equilibration protocol. The equilibrated coordinates and extended system information were used as initial conditions for all subsequent SMD trajectories.
+
+\subsection{Steered Molecular Dynamics Protocol}
+
+Steered molecular dynamics simulations were carried out using NAMD's Tcl forces interface. The pulling protocol was implemented as follows:
+
+\begin{enumerate}
+    \item \textbf{Constraint points:} Two atoms were selected as anchor points---the N atom of the first residue (fixed constraint, position $\mathbf{c}_1$) and the N atom of the tenth residue (mobile constraint, position $\mathbf{c}_2$). The constraint coordinates $(c_{1x}, c_{1y}, c_{1z})$ and $(c_{2x}, c_{2y}, c_{2z})$ were specific to each amino acid, determined from the equilibrated structure.
+    
+    \item \textbf{Pulling direction:} The first constraint point was pulled in the $-z$ direction at constant velocity, while the second constraint point was held fixed:
+    \begin{align}
+        f_{1z}(t) &= k \left[ c_{1z} - v \cdot t - r_{1z}(t) \right], \\
+        f_{2z}(t) &= k \left[ c_{2z} - r_{2z}(t) \right],
+    \end{align}
+    where $r_{iz}(t)$ are the instantaneous atom positions, $k = 7.2$~kcal/mol/\AA$^2$ is the spring constant, and $v = 0.00002$~\AA/timestep $= 0.01$~\AA/ps is the pulling velocity. Lateral ($x$ and $y$) restraints were also applied to both anchor atoms with the same spring constant.
+    
+    \item \textbf{Pulling speeds:} Three pulling velocities were investigated: $v = 0.1$, $0.01$, and $0.001$~\AA/ps.
+    
+    \item \textbf{Trajectory length:} Each SMD simulation was run for 1,750,000 steps (3.5~ns). Force and position data were recorded every 50 steps (0.1~ps).
+    
+    \item \textbf{Ensemble averaging:} For each amino acid, 10 independent SMD trajectories were generated with different random seeds to enable reliable free-energy estimation.
+\end{enumerate}
+
+\subsection{Free Energy Reconstruction}
+
+The potential of mean force (PMF) was reconstructed from the non-equilibrium work trajectories using Jarzynski's equality (Eq.~\ref{eq:jarzynski}). Three estimators were computed:
+
+\begin{enumerate}
+    \item \textbf{First cumulant (average work):}
+    \begin{equation}
+        \Delta F^{(1)}(z) = \langle W(z) \rangle
+    \end{equation}
+    This provides an upper bound on the free energy.
+    
+    \item \textbf{Second cumulant expansion:}
+    \begin{equation}
+        \Delta F^{(2)}(z) = \langle W(z) \rangle - \frac{1}{2 k_B T} \left( \langle W^2(z) \rangle - \langle W(z) \rangle^2 \right)
+    \end{equation}
+    This improves the estimate by incorporating the variance of the work distribution.
+    
+    \item \textbf{Exponential average (full Jarzynski):}
+    \begin{equation}
+        \Delta F^{\mathrm{exp}}(z) = -k_B T \ln \left\langle e^{-W(z) / k_B T} \right\rangle
+    \end{equation}
+    A numerically stabilized implementation was used, subtracting the maximum exponent before averaging to avoid overflow.
+\end{enumerate}
+
+The cumulative work along a trajectory was computed as:
+\begin{equation}
+    W(t) = v \cdot \Delta t \sum_{t'=0}^{t} \left[ -f_{1z}(t') \right],
+\end{equation}
+where $f_{1z}$ is the $z$-component of the force on the pulled atom and $\Delta t = 0.1$~ps is the output interval.
+
+\subsection{Kuhn Length Estimation}
+
+The effective Kuhn length, $a_\mathrm{Kuhn}$, was estimated from the low-extension linear regime of the force--extension data. In this regime, the mean extension responds linearly to the applied force:
+\begin{equation}
+    \langle z \rangle \approx \frac{N \, a_\mathrm{Kuhn}^2}{3 \, k_B T} \cdot f,
+\end{equation}
+where $N = 10$ is the number of residues. By performing a linear regression on the first $\sim$20\% of the extension--force data, the slope yields the Kuhn length as:
+\begin{equation}
+    a_\mathrm{Kuhn} = \sqrt{\frac{3 \, k_B T \cdot \mathrm{slope}}{N}}.
+\end{equation}
+
+\subsection{Amino Acids Studied}
+
+All 20 naturally occurring amino acids were studied, organized into four physicochemical groups:
+\begin{itemize}
+    \item \textbf{Nonpolar:} Alanine, Glycine, Valine, Leucine, Isoleucine, Proline, Phenylalanine, Methionine, Tryptophan.
+    \item \textbf{Polar uncharged:} Serine, Threonine, Cysteine, Tyrosine, Asparagine, Glutamine.
+    \item \textbf{Positively charged:} Arginine, Lysine, Histidine.
+    \item \textbf{Negatively charged:} Aspartic acid, Glutamic acid.
+\end{itemize}
+
+%% ============================================================
+\section{Results}
+%% ============================================================
+
+%% Results will be populated from analysis.py output.
+
+%% ============================================================
+\section{Script Availability}
+%% ============================================================
+
+All the scripts used are available at the \href{https://github.com/UberMayinch/Homomeric-Polypeptide-Steered-Molecular-Dynamics}{project GitHub repository}.
+
+\bibliography{references}
+\bibliographystyle{unsrt}
+\end{document}
